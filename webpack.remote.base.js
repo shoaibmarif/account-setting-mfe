@@ -38,6 +38,8 @@ module.exports = function createRemoteWebpackConfig(options) {
             envVars.REACT_HOST_MAIN_URL ||
             'http://localhost:5173';
 
+        const skipTsCheck = process.env.SKIP_TS_CHECK === 'true';
+
         return {
             mode: argv.mode || 'development',
             entry: './src/index.tsx',
@@ -72,9 +74,13 @@ module.exports = function createRemoteWebpackConfig(options) {
                 ],
             },
             plugins: [
-                new ForkTsCheckerWebpackPlugin({
-                    async: false,
-                }),
+                ...(skipTsCheck
+                    ? []
+                    : [
+                          new ForkTsCheckerWebpackPlugin({
+                              async: false,
+                          }),
+                      ]),
                 new ModuleFederationPlugin({
                     name,
                     filename: 'remoteEntry.js',
