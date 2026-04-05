@@ -1,0 +1,49 @@
+# Node modules
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+build/
+
+# Webpack cache
+.cache/
+node_modules/.cache/
+
+# Archive files
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.exe
+
+
+
+
+# Keep these in repo:
+.env
+.env.staging
+.env.example
+.env.production
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lint-output*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional coverage folder if using Jest
+coverage/
