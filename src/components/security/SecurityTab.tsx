@@ -4,7 +4,17 @@ import { RecoveryCodesModal } from './RecoveryCodesModal';
 import { MfaVerificationModal } from './MfaVerificationModal';
 
 export const SecurityTab: React.FC = () => {
-    const { slots, loading, error, generateCodes } = useRecoveryCodes();
+    const resolveEmployeeId = () => {
+        const queryEmployeeId = new URLSearchParams(globalThis.location?.search ?? '').get(
+            'employeeId',
+        );
+        const sessionEmployeeId = globalThis.sessionStorage?.getItem('employeeId');
+        const localEmployeeId = globalThis.localStorage?.getItem('employeeId');
+        return (queryEmployeeId ?? sessionEmployeeId ?? localEmployeeId ?? '').trim();
+    };
+
+    const employeeId = resolveEmployeeId();
+    const { slots, loading, error, issueCodes, regenerateCodes } = useRecoveryCodes(employeeId);
 
     // Modal states
     const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
@@ -35,7 +45,7 @@ export const SecurityTab: React.FC = () => {
     const handleGenerateCodes = async () => {
         try {
             setIsGenerating(true);
-            const newCodes = await generateCodes();
+            const newCodes = await issueCodes();
             setGeneratedCodes(newCodes);
         } catch {
             // Error is handled by the hook and shown in UI
@@ -51,7 +61,7 @@ export const SecurityTab: React.FC = () => {
     const handleMfaVerified = async () => {
         try {
             setIsGenerating(true);
-            const newCodes = await generateCodes();
+            const newCodes = await regenerateCodes();
             setGeneratedCodes(newCodes);
             setIsMfaModalOpen(false);
         } catch {

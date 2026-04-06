@@ -1,3 +1,5 @@
+import { authService } from './settings/auth.service';
+
 export interface RecoveryCodeSlot {
     sequenceNumber: number;
     used: boolean;
@@ -9,51 +11,85 @@ export interface GenerateBatchResponse {
     slots: RecoveryCodeSlot[];
 }
 
-// In a real app these would be backend endpoints.
-// Start with no generated codes so the first action is "Generate Recovery Codes".
-let mockSlots: RecoveryCodeSlot[] = [];
+const normalizePayload = (response: any) =>
+    response?.data?.payload ?? response?.data ?? response?.payload ?? response ?? {};
+
+const toBoolean = (value: unknown): boolean => {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (typeof value === 'number') {
+        return value === 1;
+    }
+    if (typeof value === 'string') {
+        return value.toLowerCase() === 'true' || value === '1';
+    }
+    return false;
+};
+
+const normalizeSlots = (payload: any): RecoveryCodeSlot[] => {
+    const rawSlots =
+        payload?.slots ??
+        payload?.recoveryCodeSlots ??
+        payload?.status ??
+        payload?.items ??
+        [];
+
+    if (!Array.isArray(rawSlots)) {
+        return [];
+    }
+
+    return rawSlots.map((slot: any, index: number) => ({
+        sequenceNumber:
+            Number(slot?.sequenceNumber ?? slot?.sequence ?? slot?.id ?? index + 1) || index + 1,
+        used: toBoolean(slot?.used ?? slot?.isUsed ?? slot?.consumed),
+        usedAt: slot?.usedAt ?? slot?.consumedAt ?? slot?.updatedAt ?? undefined,
+    }));
+};
+
+const normalizeCodes = (payload: any): string[] => {
+    const rawCodes = payload?.codes ?? payload?.recoveryCodes ?? payload?.items ?? [];
+    if (!Array.isArray(rawCodes)) {
+        return [];
+    }
+    return rawCodes.filter((item: unknown): item is string => typeof item === 'string');
+};
 
 export const recoveryCodesService = {
-    getStatus: async (): Promise<RecoveryCodeSlot[]> => {
-        return new Promise((resolve) => {
-            setTimeout(() => resolve([...mockSlots]), 500);
-        });
+    getStatus: async (employeeId: string): Promise<RecoveryCodeSlot[]> => {
+        const response = await authService.getRecoveryCodes(employeeId);
+        const payload = normalizePayload(response);
+        return normalizeSlots(payload);
     },
-    generateBatch: async (): Promise<GenerateBatchResponse> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const newCodes = Array.from({ length: 12 }).map((_, i) => {
-                    const part1 = Math.random().toString(36).substring(2, 6).toUpperCase();
-                    const part2 = Math.random().toString(36).substring(2, 6).toUpperCase();
-                    return `${(i + 1).toString().padStart(2, '0')}-${part1}-${part2}`;
-                });
-                mockSlots = Array.from({ length: 12 }).map((_, i) => ({
-                    sequenceNumber: i + 1,
-                    used: false,
-                }));
-                resolve({ codes: newCodes, slots: mockSlots });
-            }, 1000);
-        });
+    issueBatch: async (employeeId: string): Promise<GenerateBatchResponse> => {
+        const response = await authService.issueRecoveryCodes({ employeeId });
+        const payload = normalizePayload(response);
+        return {
+            codes: normalizeCodes(payload),
+            slots: normalizeSlots(payload),
+        };
     },
-    verifyAndBurn: async (code: string): Promise<boolean> => {
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const seqMatch = /^(\d+)-/.exec(code);
-                if (!seqMatch) {
-                    reject(new Error('Invalid or incorrect sequence recovery code'));
-                    return;
-                }
-                const seq = Number.parseInt(seqMatch[1]!, 10);
-                const slot = mockSlots.find(s => s.sequenceNumber === seq);
-                if (!slot || slot.used) {
-                    reject(new Error('Invalid or incorrect sequence recovery code'));
-                    return;
-                }
-                // Mock burning the code
-                const updatedSlot = { ...slot, used: true, usedAt: new Date().toISOString() };
-                mockSlots = mockSlots.map(s => s.sequenceNumber === seq ? updatedSlot : s);
-                resolve(true);
-            }, 800);
+    regenerateBatch: async (employeeId: string): Promise<GenerateBatchResponse> => {
+        const response = await authService.regenerateRecoveryCodes({ employeeId });
+        const payload = normalizePayload(response);
+        return {
+            codes: normalizeCodes(payload),
+            slots: normalizeSlots(payload),
+        };
+    },
+
+    getCurrentCodes: async (employeeId: string): Promise<string[]> => {
+        const response = await authService.getCurrentRecoveryCodes(employeeId);
+        const payload = normalizePayload(response);
+        return normalizeCodes(payload);
+    },
+
+    verifyAndBurn: async (employeeId: string, code: string): Promise<boolean> => {
+        const response = await authService.verifyRecoveryCode({
+            employeeId,
+            recoveryCode: code,
         });
-    }
+        const payload = normalizePayload(response);
+        return Boolean(response?.success ?? response?.data?.success ?? payload?.success ?? true);
+    },
 };
