@@ -30,8 +30,20 @@ const OTPRecoveryCodeHelp: React.FC<OTPRecoveryCodeHelpProps> = ({
 
     const handleRecoveryCodeSubmit = useCallback(
         async (data: OTPRecoveryCodeFormData) => {
+            const employeeId =
+                new URLSearchParams(globalThis.location?.search ?? '').get('employeeId') ??
+                globalThis.sessionStorage?.getItem('employeeId') ??
+                globalThis.localStorage?.getItem('employeeId') ??
+                '';
+
+            if (!employeeId.trim()) {
+                showToast.error('Employee ID not found. Please sign in again.');
+                return;
+            }
+
             try {
-                const response = await authService.recoveryCodeAPI({
+                const response = await authService.verifyRecoveryCode({
+                    employeeId: employeeId.trim(),
                     recoveryCode: data.recoveryCode,
                 });
 
