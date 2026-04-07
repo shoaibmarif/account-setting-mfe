@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal } from 'customMain/components';
+import { Modal } from '../common/Modal';
 
 interface MfaVerificationModalProps {
     isOpen: boolean;
@@ -11,27 +11,27 @@ interface MfaVerificationModalProps {
 export const MfaVerificationModal: React.FC<MfaVerificationModalProps> = ({
     isOpen,
     onClose,
-
+    onVerified,
     isLoading,
 }) => {
     const [otpCode, setOtpCode] = useState('');
     const [error, setError] = useState<string | null>(null);
 
-    // const handleVerify = async () => {
-    //     const normalizedCode = otpCode.trim();
-    //     if (!/^\d{6}$/.test(normalizedCode)) {
-    //         setError('Enter a valid 6-digit MFA code.');
-    //         return;
-    //     }
+    const handleVerify = async () => {
+        const normalizedCode = otpCode.trim();
+        if (!/^\d{6}$/.test(normalizedCode)) {
+            setError('Enter a valid 6-digit MFA code.');
+            return;
+        }
 
-    //     try {
-    //         setError(null);
-    //         await onVerified();
-    //         setOtpCode('');
-    //     } catch {
-    //         setError('MFA verification failed. Please try again.');
-    //     }
-    // };
+        try {
+            setError(null);
+            await onVerified();
+            setOtpCode('');
+        } catch {
+            setError('MFA verification failed. Please try again.');
+        }
+    };
 
     const handleClose = () => {
         if (isLoading) {
@@ -49,13 +49,22 @@ export const MfaVerificationModal: React.FC<MfaVerificationModalProps> = ({
             title="Verify Multi-Factor Authentication"
             size="sm"
             footer={
-                <div className="w-full flex justify-center pb-2">
+                <div className="w-full flex items-center justify-center gap-3 pb-2">
                     <button
                         onClick={handleClose}
                         disabled={isLoading}
-                        className="px-8 py-3 rounded-lg text-[16px] transition-all bg-[#252A56] text-white "
+                        className="px-6 py-3 rounded-lg text-[16px] transition-all border border-[#D0D5DD] text-[#344054] bg-white"
                     >
                         Cancel setup
+                    </button>
+                    <button
+                        onClick={() => {
+                            void handleVerify();
+                        }}
+                        disabled={isLoading}
+                        className="px-6 py-3 rounded-lg text-[16px] transition-all bg-[#252A56] text-white"
+                    >
+                        {isLoading ? 'Processing...' : 'Verify & Regenerate'}
                     </button>
                 </div>
             }

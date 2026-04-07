@@ -6,7 +6,7 @@ const baseURLkyc =
 const AUTH_BASE = '/kyc/auth';
 
 export const SETTINGS_API_URLS = {
-    GET_RECOVERY_CODES: `${baseURLkyc}${AUTH_BASE}/mfa/recovery-codes`,
+    GET_RECOVERY_CODES: `${baseURLkyc}${AUTH_BASE}/mfa/recovery-codes/list`,
     GET_CURRENT_RECOVERY_CODES: `${baseURLkyc}${AUTH_BASE}/mfa/current-recovery-codes`,
     GET_CURRENT_RECOVERY_CODES_PLAIN: `${baseURLkyc}${AUTH_BASE}/mfa/current-recovery-codes/plain`,
     RECOVERY_CODES_ISSUE: `${baseURLkyc}${AUTH_BASE}/mfa/recovery-codes/issue`,

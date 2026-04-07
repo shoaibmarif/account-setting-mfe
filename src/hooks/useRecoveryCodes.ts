@@ -1,23 +1,52 @@
 import { useState, useEffect, useCallback } from 'react';
-import { recoveryCodesService, RecoveryCodeSlot } from '../services/recoveryCodes.service';
+import {
+    recoveryCodesService,
+    type RecoveryCodesStatus,
+} from '../services/recoveryCodes.service';
 
-export const useRecoveryCodes = (employeeId: string) => {
-    const [slots, setSlots] = useState<RecoveryCodeSlot[]>([]);
+const EMPTY_RECOVERY_CODES_STATUS: RecoveryCodesStatus = {
+    slots: [],
+    codes: [],
+    totalCount: 0,
+    usedCount: 0,
+    unusedCount: 0,
+    isMfaEnabled: false,
+};
+
+const getSessionEmployeeId = (): string => {
+    try {
+        const storedIdentity = localStorage.getItem('sessionIdentity');
+        if (!storedIdentity) {
+            return '';
+        }
+
+        const parsedIdentity = JSON.parse(storedIdentity) as { employeeId?: string | number };
+        const resolvedEmployeeId = parsedIdentity?.employeeId;
+
+        return resolvedEmployeeId ? String(resolvedEmployeeId) : '';
+    } catch {
+        return '';
+    }
+};
+
+export const useRecoveryCodes = (employeeId?: string) => {
+    const resolvedEmployeeId = employeeId || getSessionEmployeeId();
+    const [status, setStatus] = useState<RecoveryCodesStatus>(EMPTY_RECOVERY_CODES_STATUS);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const loadStatus = useCallback(async () => {
-        if (!employeeId?.trim()) {
-            setSlots([]);
-            setError('Employee ID not found for recovery codes API.');
+        if (!resolvedEmployeeId) {
+            setStatus(EMPTY_RECOVERY_CODES_STATUS);
+            setError('Employee ID not found in sessionIdentity');
             setLoading(false);
             return;
         }
 
         try {
             setLoading(true);
-            const data = await recoveryCodesService.getStatus(employeeId);
-            setSlots(data);
+            const data = await recoveryCodesService.getStatus(resolvedEmployeeId);
+            setStatus(data);
             setError(null);
         } catch (err) {
             const error = err as Error;
@@ -25,16 +54,22 @@ export const useRecoveryCodes = (employeeId: string) => {
         } finally {
             setLoading(false);
         }
-    }, [employeeId]);
+    }, [resolvedEmployeeId]);
 
     useEffect(() => {
         loadStatus();
     }, [loadStatus]);
 
     const issueCodes = async () => {
+        if (!resolvedEmployeeId) {
+            const missingEmployeeError = new Error('Employee ID not found in sessionIdentity');
+            setError(missingEmployeeError.message);
+            throw missingEmployeeError;
+        }
+
         try {
-            const response = await recoveryCodesService.issueBatch(employeeId);
-            setSlots(response.slots);
+            const response = await recoveryCodesService.issueBatch(resolvedEmployeeId);
+            setStatus(response);
             return response.codes;
         } catch (err) {
             const error = err as Error;
@@ -44,9 +79,15 @@ export const useRecoveryCodes = (employeeId: string) => {
     };
 
     const regenerateCodes = async () => {
+        if (!resolvedEmployeeId) {
+            const missingEmployeeError = new Error('Employee ID not found in sessionIdentity');
+            setError(missingEmployeeError.message);
+            throw missingEmployeeError;
+        }
+
         try {
-            const response = await recoveryCodesService.regenerateBatch(employeeId);
-            setSlots(response.slots);
+            const response = await recoveryCodesService.regenerateBatch(resolvedEmployeeId);
+            setStatus(response);
             return response.codes;
         } catch (err) {
             const error = err as Error;
@@ -55,5 +96,18 @@ export const useRecoveryCodes = (employeeId: string) => {
         }
     };
 
-    return { slots, loading, error, issueCodes, regenerateCodes, refresh: loadStatus };
+    return {
+        slots: status.slots,
+        codes: status.codes,
+        totalCount: status.totalCount,
+        usedCount: status.usedCount,
+        unusedCount: status.unusedCount,
+        isMfaEnabled: status.isMfaEnabled,
+        securityNote: status.securityNote,
+        loading,
+        error,
+        issueCodes,
+        regenerateCodes,
+        refresh: loadStatus,
+    };
 };
